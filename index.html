@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>မြန်မာ ကျားကွက် | Multiplayer</title>
+<title>မြန်မာ ရိုးရာကျားကွက် | Multiplayer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@300;400;600;700&family=Cinzel+Decorative:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
@@ -14,23 +14,27 @@
   --green:#43A047; --red:#E57373; --cell:50px; --side:170px;
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;background:var(--ink);
+html,body{width:100%;height:100%;background:#06020A;
   font-family:'Noto Sans Myanmar',sans-serif;color:var(--cream);overflow:hidden}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(ellipse 100% 60% at 50% 0%,#1E0C00,transparent 70%),
-             radial-gradient(ellipse 60% 50% at 80% 100%,#150800,transparent 60%)}
+  background:
+    radial-gradient(ellipse 130% 80% at 50% -10%,#1a0a2e 0%,transparent 55%),
+    radial-gradient(ellipse 80% 60% at 0% 100%,#1e0800 0%,transparent 50%),
+    radial-gradient(ellipse 70% 50% at 100% 80%,#0d0520 0%,transparent 50%),
+    linear-gradient(180deg,#06020A 0%,#0c0418 40%,#100308 100%)}
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background-image:url("data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M24 2L46 24L24 46L2 24Z' fill='none' stroke='%23D4A843' stroke-width='.3' stroke-opacity='.04'/%3E%3C/svg%3E");
-  background-size:48px 48px}
+  background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23D4A843' stroke-opacity='.025'%3E%3Cpath d='M30 2L58 30L30 58L2 30Z' stroke-width='.5'/%3E%3Ccircle cx='30' cy='30' r='10' stroke-width='.3'/%3E%3Cpath d='M30 12L48 30L30 48L12 30Z' stroke-width='.3'/%3E%3C/g%3E%3C/svg%3E");
+  background-size:60px 60px}
+#mm-bg{position:fixed;inset:0;z-index:0;pointer-events:none}
 
 /* ── SCREENS: use display:none so NO space is taken ── */
 .scr{position:fixed;inset:0;z-index:10;display:none}
 .scr.show{display:flex}
 #lobby{align-items:center;justify-content:center;
-  background:radial-gradient(ellipse 120% 120% at 50% 50%,#1A0800,#080300)}
+  background:transparent}
 #waiting{align-items:center;justify-content:center;
-  background:rgba(8,3,0,.97);backdrop-filter:blur(10px)}
-#game{flex-direction:column;padding:7px 11px 7px;gap:7px}
+  background:rgba(4,1,8,.55);backdrop-filter:blur(10px)}
+#game{flex-direction:column;padding:7px 11px 7px;gap:7px;background:transparent}
 
 /* ── LOBBY ── */
 .lbox{position:relative;z-index:1;
@@ -145,13 +149,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   border-radius:8px;padding:6px 8px;font-size:.67rem;color:#F48FB1;
   text-align:center;margin-bottom:5px;display:none}
 .hn.on{display:block;animation:fadeUp .25s ease}
-.bhuff{width:100%;padding:8px;margin-bottom:5px;display:none;
-  background:linear-gradient(135deg,rgba(140,20,20,.75),rgba(190,35,35,.75));
-  border:1px solid rgba(229,115,115,.35);border-radius:8px;
-  color:#FFCDD2;font-family:'Noto Sans Myanmar',sans-serif;font-size:.72rem;
-  cursor:pointer;transition:all .2s}
-.bhuff.on{display:block;animation:fadeUp .25s ease}
-.bhuff:hover{background:linear-gradient(135deg,rgba(155,28,28,.9),rgba(200,40,40,.9))}
 .brsg{width:100%;padding:7px;background:transparent;
   border:1px solid rgba(155,28,28,.22);border-radius:8px;
   color:rgba(229,115,115,.4);font-family:'Noto Sans Myanmar',sans-serif;
@@ -169,12 +166,45 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .center{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}
 .pbar{display:flex;align-items:center;gap:9px;
   padding:6px 12px;border-radius:9px;width:100%;
-  background:rgba(12,6,0,.8);border:1px solid transparent;transition:all .3s}
-.pbar.act{border-color:rgba(212,168,67,.32);background:rgba(22,11,0,.92);
+  background:rgba(12,6,0,.8);border:1px solid transparent;transition:background .35s;position:relative;z-index:0}
+
+/* Normal active (opponent turn indicator) */
+.pbar.act:not(.my-turn){
+  border-color:rgba(212,168,67,.32);
+  background:rgba(22,11,0,.92);
   box-shadow:0 0 12px rgba(212,168,67,.07)}
+
+/* MY TURN — RGB conic border spin */
+@property --pbar-angle{syntax:'<angle>';initial-value:0deg;inherits:false}
+@keyframes pbar-spin{to{--pbar-angle:360deg}}
+.pbar.my-turn{
+  background:rgba(20,10,0,.97);
+  border-color:transparent;
+  isolation:isolate}
+.pbar.my-turn::before{
+  content:'';position:absolute;inset:-2px;border-radius:11px;
+  background:conic-gradient(from var(--pbar-angle),
+    #ff3860,#ff7700,#ffd000,#00e676,#00bcd4,#7c4dff,#ff3860);
+  animation:pbar-spin 2.4s linear infinite;
+  z-index:-2}
+.pbar.my-turn::after{
+  content:'';position:absolute;inset:1.5px;border-radius:9px;
+  background:rgba(20,10,0,.97);
+  z-index:-1}
+
+/* Your Turn badge — no blink, just visible */
+.your-turn-badge{
+  display:none;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:20px;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.12);
+  font-size:.56rem;font-weight:700;color:rgba(255,255,255,.75);
+  letter-spacing:.6px;white-space:nowrap}
+.pbar.my-turn .your-turn-badge{display:flex}
+
 .pbdot{width:6px;height:6px;border-radius:50%;background:var(--gold);
   opacity:0;flex-shrink:0;transition:opacity .3s}
-.pbar.act .pbdot{opacity:1;animation:pg 1.5s infinite}
+.pbar.act .pbdot,.pbar.my-turn .pbdot{opacity:1;animation:pg 1.5s infinite}
 .pbpc{width:18px;height:18px;border-radius:50%;flex-shrink:0}
 .pbpc.b{background:radial-gradient(circle at 35% 30%,#4A3020,#0D0300);border:1.5px solid #2A1008}
 .pbpc.w{background:radial-gradient(circle at 35% 30%,#FFFDF5,#C8953E);border:1.5px solid #B07820}
@@ -184,9 +214,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 
 .bframe{background:linear-gradient(145deg,#4A2200,#2A1000);
   border:2px solid rgba(212,168,67,.48);border-radius:10px;padding:13px;
-  position:relative;
+  position:relative;z-index:0;isolation:isolate;
   box-shadow:0 0 0 1px rgba(212,168,67,.1),0 0 50px rgba(212,168,67,.07),
              0 18px 50px rgba(0,0,0,.9),inset 0 0 24px rgba(0,0,0,.3)}
+
 .bfc{position:absolute;font-size:10px;color:rgba(212,168,67,.55);
   width:16px;height:16px;display:flex;align-items:center;justify-content:center}
 .bfc.tl{top:3px;left:3px}.bfc.tr{top:3px;right:3px}
@@ -213,6 +244,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .cell.sel{background:rgba(212,168,67,.42)!important}
 .cell.mvto{background:rgba(60,210,80,.28)!important}
 .cell.cpto{background:rgba(220,50,50,.32)!important}
+.cell.skipto{background:rgba(180,140,60,.22)!important}
 .cell.fr::after,.cell.to::after{content:'';position:absolute;inset:2px;
   border:1px solid rgba(212,168,67,.28);border-radius:1px;pointer-events:none}
 .dotmv{width:13px;height:13px;border-radius:50%;
@@ -223,6 +255,9 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background:rgba(220,50,50,.9);border:1.5px solid rgba(255,80,80,.9);
   box-shadow:0 0 7px rgba(220,50,50,.5);pointer-events:none;
   animation:pd .8s ease-in-out infinite}
+.dotskip{width:10px;height:10px;border-radius:50%;
+  background:rgba(200,170,80,.6);border:1.5px solid rgba(220,190,100,.7);
+  pointer-events:none;opacity:.7}
 @keyframes pd{0%,100%{transform:scale(.85);opacity:.7}50%{transform:scale(1.15);opacity:1}}
 
 .piece{width:calc(var(--cell) - 7px);height:calc(var(--cell) - 7px);
@@ -336,6 +371,38 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   cursor:pointer;transition:all .2s}
 .csnd:hover{transform:scale(1.06);filter:brightness(1.08)}
 
+.wbtn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.brematch{padding:12px 28px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#1A6A1A,#2ECC40);
+  color:#fff;font-family:'Noto Sans Myanmar',sans-serif;
+  font-size:.88rem;font-weight:700;cursor:pointer;
+  box-shadow:0 4px 18px rgba(46,204,64,.3);transition:all .2s}
+.brematch:hover{transform:translateY(-2px);filter:brightness(1.1)}
+.brematch:disabled{opacity:.45;cursor:default;transform:none}
+.rematch-status{font-size:.75rem;color:rgba(212,168,67,.6);margin-top:10px;min-height:18px}
+
+/* ── GHOST PIECE (huff replay) ── */
+.ghost-piece{position:fixed;border-radius:50%;pointer-events:none;z-index:900;
+  transition:left .35s cubic-bezier(.4,0,.2,1), top .35s cubic-bezier(.4,0,.2,1);
+  opacity:.85;box-shadow:0 0 18px 6px rgba(255,80,80,.55)}
+.ghost-piece.bp{background:radial-gradient(circle at 32% 28%,#4A3020,#1E0E04 40%,#050200);
+  border:2px solid rgba(229,115,115,.8)}
+.ghost-piece.wp{background:radial-gradient(circle at 32% 28%,#FFFDF5,#EDD5A3 30%,#C8953E 65%,#9A6A20);
+  border:2px solid rgba(229,115,115,.8)}
+.ghost-piece.kp::after{content:'♛';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-53%);font-size:40%;color:var(--gold);pointer-events:none}
+@keyframes ghost-fade-in{from{opacity:0;transform:scale(.5)}to{opacity:.85;transform:scale(1)}}
+@keyframes ghost-pop{0%{transform:scale(1)}40%{transform:scale(1.3)}100%{transform:scale(0);opacity:0}}
+
+/* ── COPY CODE ── */
+.copy-code{cursor:pointer;user-select:none;position:relative;display:inline-block}
+.copy-code:hover{opacity:.8}
+.copy-tip{position:absolute;top:-26px;left:50%;transform:translateX(-50%);
+  background:rgba(212,168,67,.9);color:#080300;font-size:.62rem;font-weight:700;
+  padding:3px 8px;border-radius:5px;white-space:nowrap;opacity:0;pointer-events:none;
+  transition:opacity .2s}
+.copy-tip.show{opacity:1}
+
 /* ── WIN ── */
 #wino{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;
   background:rgba(0,0,0,0);backdrop-filter:blur(0);
@@ -365,13 +432,12 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 </style>
 </head>
 <body>
-
-<!-- LOBBY -->
+<canvas id="mm-bg"></canvas>
 <div id="lobby" class="scr show">
   <div class="lbox">
     <div class="licon">🎭</div>
     <div class="ltitle">KYAR KWAT</div>
-    <div class="lsub">မြန်မာ ကျားကွက် · Online Multiplayer</div>
+    <div class="lsub">မြန်မာ ရိုးရာကျားကွက် · Online Multiplayer</div>
     <div class="ldiv"></div>
     <div class="llbl">👤 သင့်အမည်</div>
     <input class="linp" id="inp-name" type="text" placeholder="အမည်ထည့်ပါ..." maxlength="20">
@@ -394,8 +460,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   <div class="wbox">
     <div class="wspin"></div>
     <div class="wlbl">Room Code</div>
-    <div class="wcode" id="w-code">------</div>
-    <div class="wlbl">ဤ Code ကို သူငယ်ချင်းထံ ပို့ပါ</div>
+    <div class="wcode copy-code" id="w-code" onclick="copyRoomCode()" title="ကူးရန် နှိပ်ပါ">------
+      <div class="copy-tip" id="copy-tip">✓ ကူးပြီး!</div>
+    </div>
+    <div class="wlbl">ဤ Code ကို သူငယ်ချင်းထံ ပို့ပါ · နှိပ်ပြီး ကူးနိုင်သည်</div>
     <div class="whint">ပြိုင်ဘက် Join ရန် စောင့်နေသည်...</div>
     <button class="bcanc" onclick="cancelRoom()">ဖျက်သိမ်းမည်</button>
   </div>
@@ -404,8 +472,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 <!-- GAME -->
 <div id="game" class="scr">
   <div class="topbar">
-    <div class="tlogo">🎭 KYAR KWAT<small>မြန်မာ ကျားကွက်</small></div>
-    <div class="rpill">Room: <strong id="top-room">----</strong></div>
+    <div class="tlogo">🎭 KYAR KWAT<small>မြန်မာ ရိုးရာကျားကွက်</small></div>
+    <div class="rpill copy-code" onclick="copyRoomCode()" title="ကူးရန် နှိပ်ပါ" style="cursor:pointer">Room: <strong id="top-room">----</strong> <span style="font-size:.6rem;opacity:.5">📋</span>
+      <div class="copy-tip" id="copy-tip2">✓ ကူးပြီး!</div>
+    </div>
     <div class="cwrap"><div class="cdot" id="cdot"></div><span>Online</span></div>
   </div>
 
@@ -426,8 +496,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         </div>
       </div>
       <div class="ic">
-        <div class="hn" id="hn">⚠️ ပြိုင်ဘက်က ဖမ်းမစားခဲ့ပါ!<br>Huff လုပ်ချင်ပါသလား? <span id="huff-timer" style="font-weight:700"></span></div>
-        <button class="bhuff" id="bhuff" onclick="doHuff()">💨 Huff — ကျောက်ဖယ်ရှားမည်</button>
+        <div class="hn" id="hn">💨 ပြိုင်ဘက်က ဖမ်းမစားခဲ့ပါ!<br><span id="huff-piece-lbl" style="color:var(--gold);font-weight:700"></span> ကောင်ကို ဖမ်းကောက်လိုက်သည်!</div>
         <button class="brsg" onclick="doResign()">🏳️ ဆုံးနိုင်ခြင်း</button>
       </div>
       <div class="ic">
@@ -480,6 +549,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         <div class="pbpc" id="my-pc"></div>
         <div><div class="pbnm" id="my-pnm">-</div><div class="pbrl" id="my-prl">-</div></div>
         <div style="flex:1"></div>
+        <div class="your-turn-badge">⚡ Your Turn</div>
       </div>
 
       <!-- Chat -->
@@ -532,7 +602,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <div class="wi" id="wi">🏆</div>
     <div class="wt" id="wt">-</div>
     <div class="wm" id="wm">-</div>
-    <button class="bgold" style="padding:12px 30px;width:auto;flex:none;display:inline-block" onclick="doLeave()">🚪 Lobby သို့ ပြန်သွားမည်</button>
+    <div class="wbtn-row">
+      <button class="brematch" id="btn-rematch" onclick="requestRematch()">🔄 ထပ်ကစားမည်</button>
+      <button class="bgold" style="padding:12px 20px;width:auto;flex:none;display:inline-block" onclick="doLeave()">🚪 Lobby</button>
+    </div>
+    <div class="rematch-status" id="rematch-status"></div>
   </div>
 </div>
 
@@ -619,10 +693,17 @@ let fbReady=false;
 let unsub=null,unsubChat=null;
 let ver=0;
 let huffOn=false,huffAt=null;
-let huffTimerInterval=null,huffTimerSec=0;
 let leaving=false,winShown=false;
+let gameCount=0; // increments each rematch — used to alternate first-move and color
 
 window.addEventListener('fbReady',()=>{fbReady=true;$s('lst','');});
+
+/* ═══════════════════════════════════
+   VIBRATION HELPER
+═══════════════════════════════════ */
+function vibrate(pattern){
+  try{if(navigator.vibrate)navigator.vibrate(pattern);}catch(e){}
+}
 
 /* ═══════════════════════════════════
    HELPERS
@@ -757,7 +838,6 @@ let chainDone=0;       // how many steps committed
 
 function onCell(r,c){
   if(over)return;
-  if(huffOn&&turn===myColor){toast('⚠️ ဦးစွာ Huff ဆုံးဖြတ်ပါ');return;}
   if(turn!==myColor){toast('⏳ သင့်အလှည့် မဟုတ်သေးပါ');return;}
 
   if(sel){
@@ -785,23 +865,36 @@ function onCell(r,c){
 /* Start selection on a piece */
 function pick(r,c){
   clearCapOverlay();
-  const ac=allCaps(turn,board),ml=maxCapLen(ac);
-  if(ml>0){
-    const en=ac.find(e=>e.r===r&&e.c===c);
-    if(!en){toast('⚔️ ဤကျောက်က အများဆုံးဖမ်းနိုင်မှုမရှိ');return;}
-    const mp=en.paths.filter(p=>p.length===ml);
+  const ac=allCaps(turn,board);
+  const ml=maxCapLen(ac);
+  const capEntry=ac.find(e=>e.r===r&&e.c===c);
+
+  if(ml>0 && capEntry){
+    // This piece CAN capture — show capture moves + normal moves (skip allowed, huff applies)
+    const mp=capEntry.paths.filter(p=>p.length===ml);
+    if(!mp.length){toast('⚠️ ဖမ်းနိုင်သောလမ်း မရှိ');return;}
     chainOrigin={r,c};chainPaths=mp;chainDone=0;
     sel={r,c};
     legals=buildLegalsAtStep(mp,0);
-    // Show path overlay (deduplicate by first-step destination)
+    // Also add normal moves marked as skip (huff will fire if chosen)
+    const nmv=normalMoves(r,c,turn,board);
+    for(const m of nmv)legals.push({r:m.r,c:m.c,isCap:false,isSkip:true});
+    // Show path overlay
     const seen=new Set();const uniqPaths=[];
     for(const p of mp){const k=p.map(s=>`${s.r},${s.c}`).join('|');if(!seen.has(k)){seen.add(k);uniqPaths.push(p);}}
     if(uniqPaths.length)showCapPaths(r,c,uniqPaths.slice(0,4));
-  } else {
+  } else if(ml>0 && !capEntry){
+    // Other piece must capture — this piece can still move but huff applies
     const mv=normalMoves(r,c,turn,board);
-    if(!mv.length){toast('⚠️ ဤကျောက်မှ ရွေ့နိုင်သောနေရာမရှိ');return;}
+    if(!mv.length){toast('⚠️ ဤကျားမှ ရွေ့နိုင်သောနေရာ မရှိ');return;}
     chainOrigin=null;chainPaths=[];chainDone=0;
-    sel={r,c};legals=mv.map(m=>({...m,isCap:false}));
+    sel={r,c};legals=mv.map(m=>({r:m.r,c:m.c,isCap:false,isSkip:true}));
+  } else {
+    // No captures anywhere — plain normal moves
+    const mv=normalMoves(r,c,turn,board);
+    if(!mv.length){toast('⚠️ ဤကျားမှ ရွေ့နိုင်သောနေရာ မရှိ');return;}
+    chainOrigin=null;chainPaths=[];chainDone=0;
+    sel={r,c};legals=mv.map(m=>({r:m.r,c:m.c,isCap:false,isSkip:false}));
   }
   draw();
 }
@@ -850,13 +943,149 @@ function commitCapStep(hit){
 }
 
 /* Normal (non-capture) move */
-function doNormalMove(fr,fc,mv){
-  const ac=allCaps(turn,board),had=ac.length>0;
+async function doNormalMove(fr,fc,mv){
+  const ac=allCaps(turn,board);
+  const had=ac.length>0;
+
+  // Find huff info BEFORE modifying board
+  // huffEntry = the piece that SHOULD have captured but didn't
+  // Rule: if the moved piece itself could capture → it's the victim
+  //       otherwise → whichever other piece could capture is the victim
+  let huffEntry=null;
+  if(had){
+    const ml=maxCapLen(ac);
+    // Prefer the moved piece as victim if it could capture
+    const movedEntry=ac.find(e=>e.r===fr&&e.c===fc);
+    const bestEntry=movedEntry || ac[0];
+    for(const path of bestEntry.paths){
+      if(path.length===ml){
+        huffEntry={or:bestEntry.r, oc:bestEntry.c, path, piece:board[bestEntry.r][bestEntry.c]};
+        break;
+      }
+    }
+  }
+
+  // Apply the normal move
   lastF={r:fr,c:fc};
-  board[mv.r][mv.c]=board[fr][fc];board[fr][fc]=E;
-  lastT={r:mv.r,c:mv.c};promote(mv.r,mv.c);
-  addLog(`${turn===B?'⬛':'⬜'} ${cl(fc)}${fr+1}→${cl(mv.c)}${mv.r+1}`);
-  clearSel();finish(had,had?{r:fr,c:fc}:null);
+  board[mv.r][mv.c]=board[fr][fc];
+  board[fr][fc]=E;
+  lastT={r:mv.r,c:mv.c};
+  promote(mv.r,mv.c);
+  addLog(`${turn===B?'⬛':'⬜'} ${cl(fc)}${fr+1}→${cl(mv.c)}${mv.r+1}${had?' ⚠️ ဖမ်းမစားခဲ့!':''}`);
+  clearSel();
+  draw();
+
+  if(had && huffEntry){
+    // huffVictim: where is the piece that failed to capture RIGHT NOW (after board update)?
+    // If it was the moved piece → it's at mv destination
+    // If it's a different piece → still at its original position
+    const wasMovedPiece=(huffEntry.or===fr && huffEntry.oc===fc);
+    const huffVictim=wasMovedPiece
+      ? {r:mv.r, c:mv.c}
+      : {r:huffEntry.or, c:huffEntry.oc};
+
+    const missedLabel=`${cl(huffEntry.path[0].cap[1])}${huffEntry.path[0].cap[0]+1}`;
+    await showHuffAnimation(huffEntry, missedLabel, huffVictim);
+    const victimLabel=`${cl(huffVictim.c)}${huffVictim.r+1}`;
+    finish(false,null,{by:myName,at:victimLabel,ts:Date.now()});
+  } else {
+    finish(false,null,null);
+  }
+}
+
+/* Show ghost piece replaying the missed capture, then remove the piece that FAILED to capture */
+async function showHuffAnimation(huffEntry, hPosLabel, huffVictim){
+  const {or, oc, path, piece} = huffEntry;
+  const cell=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell'))||50;
+
+  function cellPageCenter(r,c){
+    const el=getCellEl(r,c);
+    if(!el)return{x:0,y:0};
+    const rect=el.getBoundingClientRect();
+    return{x:rect.left+rect.width/2, y:rect.top+rect.height/2};
+  }
+
+  // --- Phase 1: Highlight the piece that FAILED to capture (red outline) ---
+  // Use the ORIGINAL position (or,oc) for highlight — that's where it stood when it should have captured
+  const origEl=getCellEl(or,oc);
+  const victimEl=getCellEl(huffVictim.r,huffVictim.c);
+  // Highlight whichever cell actually has the piece now
+  const hlEl=origEl&&origEl.querySelector('.piece')?origEl:victimEl;
+  if(hlEl){hlEl.style.outline='3px solid rgba(229,115,115,.95)';hlEl.style.outlineOffset='-2px';}
+  // Also show what it COULD have eaten (yellow)
+  for(const s of path){
+    const capEl=getCellEl(s.cap[0],s.cap[1]);
+    if(capEl){capEl.style.outline='3px solid rgba(255,220,50,.7)';capEl.style.outlineOffset='-2px';}
+  }
+  toast(`⚔️ ဒီကောင်က ${hPosLabel} ကို ဖမ်းနိုင်ခဲ့သည်`);
+  await sleep(1000);
+
+  // --- Phase 2: Ghost walks the capture path it COULD have taken ---
+  if(hlEl)hlEl.style.outline='';
+  for(const s of path){
+    const capEl=getCellEl(s.cap[0],s.cap[1]);
+    if(capEl)capEl.style.outline='';
+  }
+
+  const pieceSize=cell-7;
+  const isBlack=isB(piece);
+  const isKing=isK(piece);
+
+  const ghost=document.createElement('div');
+  ghost.className=`ghost-piece ${isBlack?'bp':'wp'}${isKing?' kp':''}`;
+  ghost.style.cssText=`width:${pieceSize}px;height:${pieceSize}px;position:fixed;z-index:900;
+    border-radius:50%;pointer-events:none;
+    transition:left .32s cubic-bezier(.4,0,.2,1),top .32s cubic-bezier(.4,0,.2,1);
+    animation:ghost-fade-in .25s ease forwards`;
+  document.body.appendChild(ghost);
+
+  // Ghost starts from the ORIGINAL position of the piece (or, oc) — before any move
+  const startPos=cellPageCenter(or, oc);
+  ghost.style.left=`${startPos.x-pieceSize/2}px`;
+  ghost.style.top=`${startPos.y-pieceSize/2}px`;
+  await sleep(280);
+
+  toast(`💨 မစားမိ — ဒီကောင် ဖမ်းကောက်ခံရမည်`);
+
+  // Walk the capture path
+  for(const s of path){
+    const dest=cellPageCenter(s.r,s.c);
+    ghost.style.left=`${dest.x-pieceSize/2}px`;
+    ghost.style.top=`${dest.y-pieceSize/2}px`;
+    await sleep(150);
+    const capEl=getCellEl(s.cap[0],s.cap[1]);
+    if(capEl){
+      const flash=document.createElement('div');
+      flash.className='cap-flash';capEl.appendChild(flash);
+      setTimeout(()=>flash.remove(),380);
+    }
+    await sleep(220);
+  }
+
+  await sleep(200);
+  ghost.style.transition='none';
+  ghost.style.animation='ghost-pop .35s ease forwards';
+  await sleep(350);
+  ghost.remove();
+
+  // --- Phase 3: Remove the piece that FAILED to capture (huffVictim) ---
+  const oppColor=turn===B?W:B;
+  const victimPiece=board[huffVictim.r][huffVictim.c];
+  if(victimPiece!==E){
+    capBy[oppColor].push(victimPiece); // opponent gains it
+    board[huffVictim.r][huffVictim.c]=E;
+  }
+  const victimLabel=`${cl(huffVictim.c)}${huffVictim.r+1}`;
+  const vEl=getCellEl(huffVictim.r,huffVictim.c);
+  if(vEl){
+    const flash=document.createElement('div');
+    flash.className='cap-flash';vEl.appendChild(flash);
+    setTimeout(()=>flash.remove(),450);
+  }
+  addLog(`💨 Huff! ${victimLabel} ဖမ်းကောက်ခံရ`);
+  draw();
+  toast(`💨 ဖမ်းကောက်ခြင်း — ${victimLabel}`);
+  await sleep(600);
 }
 
 // Helper: get the DOM cell element for a given board (r,c)
@@ -923,7 +1152,7 @@ const cl=c=>String.fromCharCode(65+c);
 /* ═══════════════════════════════════
    FINISH TURN
 ═══════════════════════════════════ */
-function finish(tHuff,hPos){
+function finish(tHuff,hPos,huffNotif){
   const{bc,wc}=cnt();
   if(!bc){endGame(W,'ဖြူ');return;}
   if(!wc){endGame(B,'မဲ');return;}
@@ -933,10 +1162,12 @@ function finish(tHuff,hPos){
   if(!hasM)for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(isOwn(board[r][c],nxt)&&normalMoves(r,c,nxt,board).length){hasM=true;break;}
   if(!hasM){endGame(turn,turn===B?'မဲ':'ဖြူ');return;}
   ver++;
-  push({board:board.map(r=>[...r]),turn:nxt,ver,over:false,winner:null,
+  const payload={board:board.map(r=>[...r]),turn:nxt,ver,over:false,winner:null,
     capBy:{[B]:[...capBy[B]],[W]:[...capBy[W]]},
     lastF,lastT,lastLog:glog[0]||'',
-    huffAvail:tHuff,huffPos:tHuff?hPos:null,huffFor:tHuff?nxt:null});
+    huffAvail:false,huffPos:null,huffFor:null};
+  if(huffNotif)payload.huffNotif=huffNotif;
+  push(payload);
   turn=nxt;draw();uiUpdate();
 }
 
@@ -949,50 +1180,13 @@ function endGame(winner,wn){
 }
 
 /* ═══════════════════════════════════
-   HUFF / RESIGN
+   HUFF (AUTO) / RESIGN
 ═══════════════════════════════════ */
-window.doHuff=function(){
-  if(!huffOn||!huffAt)return;
-  const{r,c}=huffAt;
-  if(board[r][c]!==E){capBy[myColor].push(board[r][c]);board[r][c]=E;addLog(`💨 Huff! ${cl(c)}${r+1} ဖယ်`);}
-  clearHuff();ver++;
-  push({board:board.map(r=>[...r]),turn,ver,over:false,winner:null,
-    capBy:{[B]:[...capBy[B]],[W]:[...capBy[W]]},
-    lastF,lastT,lastLog:glog[0]||'',huffAvail:false,huffPos:null,huffFor:null,
-    huffNotif:{by:myName,at:`${cl(c)}${r+1}`,ts:Date.now()}});
-  draw();uiUpdate();
-};
 function clearHuff(){
   huffOn=false;huffAt=null;
-  clearInterval(huffTimerInterval);huffTimerInterval=null;huffTimerSec=0;
-  $('bhuff').classList.remove('on');$('hn').classList.remove('on');
-  $s('huff-timer','');
+  $('hn').classList.remove('on');
 }
 
-function startHuffTimer(){
-  // 30s countdown — if expires, auto-huff (take the piece)
-  huffTimerSec=30;
-  updateHuffTimerUI();
-  clearInterval(huffTimerInterval);
-  huffTimerInterval=setInterval(()=>{
-    huffTimerSec--;
-    updateHuffTimerUI();
-    if(huffTimerSec<=0){
-      clearInterval(huffTimerInterval);
-      toast('⏰ 30 စက္ကန့် ကျော်သွားသည် — Huff အလိုအလျောက် ဖယ်ရှားသည်!');
-      addLog('⏰ Auto-Huff! (30s ကျော်)');
-      doHuff();
-    }
-  },1000);
-}
-
-function updateHuffTimerUI(){
-  const el=$('huff-timer');
-  if(el){
-    el.textContent=`(${huffTimerSec}s)`;
-    el.style.color=huffTimerSec<=10?'#E57373':'#F0CC72';
-  }
-}
 window.doResign=function(){
   if(over)return;
   if(!confirm('ဆုံးနိုင်ကြောင်း သေချာပါသလား?'))return;
@@ -1000,7 +1194,82 @@ window.doResign=function(){
 };
 
 /* ═══════════════════════════════════
-   FIREBASE
+   REMATCH
+═══════════════════════════════════ */
+window.requestRematch=function(){
+  if(!fbReady||!roomId)return;
+  const btn=$('btn-rematch');
+  if(btn){btn.disabled=true;btn.textContent='⏳ စောင့်နေသည်...';}
+  $s('rematch-status','ပြိုင်ဘက် သဘောတူဖို့ စောင့်နေသည်...');
+  const{db,ref,update}=FB();
+  const who=isHost?'host':'guest';
+  update(ref(db,`rooms/${roomId}/rematch`),{[who]:true});
+};
+
+function listenRematch(){
+  const{db,ref,onValue,remove}=FB();
+  onValue(ref(db,`rooms/${roomId}/rematch`),snap=>{
+    if(!snap.exists()||!over)return;
+    const d=snap.val();
+    const hostReady=!!d.host, guestReady=!!d.guest;
+
+    // Update UI
+    if(isHost){
+      if(!hostReady&&guestReady){
+        $s('rematch-status','ပြိုင်ဘက် သဘောတူပြီ! သင်လည်း နှိပ်ပါ');
+      } else if(hostReady&&!guestReady){
+        $s('rematch-status','ပြိုင်ဘက် သဘောတူဖို့ စောင့်နေသည်...');
+      }
+    } else {
+      if(hostReady&&!guestReady){
+        $s('rematch-status','ပြိုင်ဘက် သဘောတူပြီ! သင်လည်း နှိပ်ပါ');
+      } else if(!hostReady&&guestReady){
+        $s('rematch-status','ပြိုင်ဘက် သဘောတူဖို့ စောင့်နေသည်...');
+      }
+    }
+
+    if(hostReady&&guestReady){
+      // Both agreed — host starts the new game
+      if(isHost){
+        remove(ref(db,`rooms/${roomId}/rematch`));
+        startRematch();
+      }
+    }
+  });
+}
+
+function startRematch(){
+  // Alternate colors each game: even gameCount → host=B, odd → host=W
+  gameCount++;
+  const hostIsBlack=(gameCount%2===0);
+  myColor=hostIsBlack?B:W;
+
+  // First move alternates: even → B starts, odd → W starts (same as always B starts but colors swap)
+  const initTurn=B; // Black always moves first in checkers
+
+  const newState={board:newBoard(),turn:initTurn,ver:0,over:false,winner:null,
+    capBy:{[B]:[],[W]:[]},lastF:null,lastT:null,lastLog:'',
+    huffAvail:false,huffPos:null,huffFor:null,
+    hostColor:hostIsBlack?B:W};
+
+  const{db,ref,update}=FB();
+  update(ref(db,`rooms/${roomId}`),{state:newState,
+    host:{name:myName,color:hostIsBlack?B:W},
+    rematch:null});
+}
+
+function applyRematchColor(st){
+  // Both players sync their color from hostColor field
+  if(st.hostColor===undefined)return;
+  myColor=isHost?st.hostColor:(st.hostColor===B?W:B);
+}
+
+/* Shown to the player who missed — board already updated, just toast */
+function showHuffReceivedOverlay(oppName,pieceLabel){
+  toast(`💨 ဖမ်းကောက်ခြင်း — ${pieceLabel}`);
+}
+
+/* ═══════════════════════════════════
 ═══════════════════════════════════ */
 function FB(){return window._FB;}
 function push(state){if(!fbReady||!roomId)return;const{db,ref,update}=FB();update(ref(db,`rooms/${roomId}`),{state});}
@@ -1034,7 +1303,7 @@ window.joinRoom=async function(){
   const d=snap.val();
   if(d.status!=='waiting'){$s('lst','❌ Room ပြည့်နေသည်');return;}
   await update(ref(db,`rooms/${roomId}`),{guest:{name:myName,color:W},status:'playing'});
-  loadSt(d.state);showGame();listenRoom();listenChat();
+  loadSt(d.state);showGame();listenRoom();listenChat();listenRematch();
 };
 
 window.cancelRoom=function(){
@@ -1055,13 +1324,13 @@ function listenRoom(){
       $s('opp-nm',n);$s('opp-pnm',n);
     }
     if(isHost&&d.status==='playing'&&!$('game').classList.contains('show')){
-      loadSt(d.state);showGame();listenChat();
+      loadSt(d.state);showGame();listenChat();listenRematch();
       sysChat(`🎮 ${d.guest?.name||'ပြိုင်ဘက်'} ဝင်ရောက်လာပြီ! ဂိမ်းစပါသည်!`);
     }
     if(!$('game').classList.contains('show'))return;
     const st=d.state;if(!st)return;
     const rv=st.ver||0;
-    const apply=(st.turn===myColor&&rv>0)||st.over||(st.huffAvail&&st.huffFor===myColor);
+    const apply=(rv>ver)||st.over||!!st.huffNotif;
     if(apply)applyRemote(st);
   });
 }
@@ -1076,6 +1345,22 @@ function listenChat(){
 }
 
 function applyRemote(st){
+  const prevVer=ver;
+
+  // Detect rematch: new game started (ver resets to 0, over was true)
+  if(st.ver===0&&over&&st.hostColor!==undefined){
+    applyRematchColor(st);
+    loadSt(st);
+    over=false;winShown=false;
+    gameCount++;
+    $('wino').classList.remove('on');
+    $s('rematch-status','');
+    const btn=$('btn-rematch');if(btn){btn.disabled=false;btn.textContent='🔄 ထပ်ကစားမည်';}
+    showGame();
+    sysChat(`🔄 ပွဲ ${gameCount+1} စတင်သည်! ${myColor===B?'⬛ မဲ':'⬜ ဖြူ'} ကစားမည်`);
+    return;
+  }
+
   board=st.board.map(r=>[...r]);
   turn=st.turn;ver=st.ver||0;
   lastF=st.lastF||null;lastT=st.lastT||null;
@@ -1084,20 +1369,22 @@ function applyRemote(st){
   over=st.over||false;
   sel=null;legals=[];
   clearHuff();
-  if(st.huffAvail&&st.huffFor===myColor&&st.huffPos){
-    huffOn=true;huffAt=st.huffPos;
-    $('bhuff').classList.add('on');$('hn').classList.add('on');
-    toast('💨 ပြိုင်ဘက်က ဖမ်းမစားခဲ့! 30s အတွင်း Huff ခွင့်ရှိ!');
-    startHuffTimer();
-  }
-  // Huff notification — opponent took a piece via huff
+  // Huff notification — opponent auto-took a piece we missed
   if(st.huffNotif&&st.huffNotif.ts&&(!window._lastHuffTs||st.huffNotif.ts>window._lastHuffTs)){
     window._lastHuffTs=st.huffNotif.ts;
     const oppName=st.huffNotif.by||'ပြိုင်ဘက်';
-    toast(`💨 ${oppName} က Huff ဖြင့် ${st.huffNotif.at} မှ ကောင်ဖမ်းကောက်သွားသည်!`);
-    sysChat(`💨 ${oppName} က Huff ဖြင့် ${st.huffNotif.at} ကောင်ကို ဖမ်းကောက်သွားသည်!`);
+    $s('huff-piece-lbl',st.huffNotif.at);
+    $('hn').classList.add('on');
+    vibrate([200,80,200,80,200]);
+    toast(`💨 ဖမ်းကောက်ခြင်း — ${st.huffNotif.at}`);
+    sysChat(`💨 ${oppName} က မစားမိလို့ — ${st.huffNotif.at} ကျား ဖမ်းကောက်ခံလိုက်ရသည်`);
+    setTimeout(()=>$('hn').classList.remove('on'),4000);
+    showHuffReceivedOverlay(oppName,st.huffNotif.at);
   }
   draw();uiUpdate();
+  // Vibrate when a NEW state arrives AND it is now MY turn
+  // Use ver change to confirm this is a genuinely new state from opponent
+  if(ver>prevVer && turn===myColor && !st.over){vibrate([0,60,120,60,200,60,120]);}
   if(st.over&&st.winner!=null)showWin(st.winner===myColor,st.winner===B?'မဲ':'ဖြူ');
 }
 
@@ -1122,7 +1409,6 @@ function showWin(iWon,wn){
 
 window.doLeave=function(){
   if(leaving)return;leaving=true;over=true;
-  clearInterval(huffTimerInterval);huffTimerInterval=null;
   try{if(typeof unsub==='function')unsub();}catch(e){}
   try{if(typeof unsubChat==='function')unsubChat();}catch(e){}
   unsub=null;unsubChat=null;
@@ -1131,7 +1417,9 @@ window.doLeave=function(){
   roomId='';myColor=null;isHost=false;leaving=false;
   board=[];turn=B;sel=null;legals=[];over=false;glog=[];
   capBy={[B]:[],[W]:[]};ver=0;huffOn=false;huffAt=null;
-  lastF=null;lastT=null;winShown=false;$s('lst','');
+  lastF=null;lastT=null;winShown=false;gameCount=0;$s('lst','');
+  $s('rematch-status','');
+  const btn=$('btn-rematch');if(btn){btn.disabled=false;btn.textContent='🔄 ထပ်ကစားမည်';}
 };
 
 /* ═══════════════════════════════════
@@ -1196,7 +1484,7 @@ function draw(){
       const mv=lm.get(`${r},${c}`);
 
       if(isSel)cell.classList.add('sel');
-      else if(mv)cell.classList.add(mv.isCap?'cpto':'mvto');
+      else if(mv)cell.classList.add(mv.isCap?'cpto':mv.isSkip?'skipto':'mvto');
       if(lastF&&lastF.r===r&&lastF.c===c)cell.classList.add('fr');
       if(lastT&&lastT.r===r&&lastT.c===c)cell.classList.add('to');
 
@@ -1222,7 +1510,7 @@ function draw(){
         cell.appendChild(p);
       } else if(mv&&!isSel){
         const d=document.createElement('div');
-        d.className=mv.isCap?'dotcp':'dotmv';
+        d.className=mv.isCap?'dotcp':mv.isSkip?'dotskip':'dotmv';
         cell.appendChild(d);
       }
 
@@ -1251,6 +1539,7 @@ function uiUpdate(){
   $('my-card').classList.toggle('act',mine);
   $('opp-card').classList.toggle('act',!mine);
   $('my-bar').classList.toggle('act',mine);
+  $('my-bar').classList.toggle('my-turn',mine&&!over);
   $('opp-bar').classList.toggle('act',!mine);
 
   buildCap('my-cap',capBy[myColor]);
@@ -1258,7 +1547,7 @@ function uiUpdate(){
 
   if(turn===myColor&&!over){
     const ac=allCaps(myColor,board);
-    if(ac.length)toast('⚔️ ဖမ်းယူနိုင်သည်! ဆုံးသောနည်းကို ရွေးပါ');
+    if(ac.length)toast('⚔️ ဖမ်းယူနိုင်သည်! ကျားကို ထောက်ကြည့်ပါ');
   }
 }
 
@@ -1288,7 +1577,7 @@ function showGame(){
 
   // My card (left panel)
   $s('my-nm',myName);
-
+  $s('my-rl',isBlk?'⬛ မဲ ':'⬜ ဖြူ');
   $('my-av').className=`pav ${isBlk?'av-b':'av-w'}`;
   $s('my-av',isBlk?'⬛':'⬜');
 
@@ -1435,9 +1724,320 @@ function showCapPaths(r,c,paths){
 
 /* ═══════════════════════════════════
 ═══════════════════════════════════ */
+/* ═══════════════════════════════════
+   COPY ROOM CODE
+═══════════════════════════════════ */
+window.copyRoomCode=function(){
+  if(!roomId)return;
+  navigator.clipboard.writeText(roomId).then(()=>{
+    // Show tip on waiting screen
+    const t=$('copy-tip');if(t){t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1500);}
+    // Show tip on topbar
+    const t2=$('copy-tip2');if(t2){t2.classList.add('show');setTimeout(()=>t2.classList.remove('show'),1500);}
+  }).catch(()=>{
+    // Fallback: select text
+    const el=$('w-code')||$('top-room');
+    if(el){const r=document.createRange();r.selectNode(el);window.getSelection().removeAllRanges();window.getSelection().addRange(r);}
+  });
+};
+
 $('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')createRoom();});
 $('inp-code').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom();});
 $('inp-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase();});
 </script>
+
+<!-- Myanmar Cultural Live Background -->
+<script>
+(function(){
+  const cv=document.getElementById('mm-bg');
+  const cx=cv.getContext('2d');
+  let W,H;
+
+  function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;}
+  resize();
+  window.addEventListener('resize',resize);
+
+  // ── Colour palette ──────────────────────────────────────
+  const GOLD='rgba(212,168,67,';
+  const RUBY='rgba(180,30,60,';
+  const JADE='rgba(40,120,80,';
+  const LOTUS='rgba(200,80,120,';
+  const SKY='rgba(60,100,180,';
+
+  // ── Particle system ─────────────────────────────────────
+  // Each particle is a floating Myanmar cultural symbol
+  const SYMBOLS=['✦','❖','◈','⬡','☸','❋','✿','❁'];
+  const BURMESE_CHARS=['ဗ','မ','ရ','က','ဓ','ပ','ဥ'];
+
+  class Particle{
+    constructor(){this.reset(true);}
+    reset(init){
+      this.x=Math.random()*W;
+      this.y=init?Math.random()*H:H+40;
+      this.vy=-(0.12+Math.random()*0.22);
+      this.vx=(Math.random()-.5)*0.12;
+      this.size=7+Math.random()*14;
+      this.alpha=0;
+      this.targetAlpha=0.12+Math.random()*0.18;
+      this.fadeIn=true;
+      this.life=0;
+      this.maxLife=220+Math.random()*280;
+      const r=Math.random();
+      if(r<0.35){this.type='pagoda';}
+      else if(r<0.55){this.type='lotus';}
+      else if(r<0.70){this.type='diamond';}
+      else if(r<0.82){this.type='star8';}
+      else if(r<0.91){this.type='char';this.ch=BURMESE_CHARS[Math.floor(Math.random()*BURMESE_CHARS.length)];}
+      else{this.type='hti';}
+      const cr=Math.random();
+      this.color=cr<.35?GOLD:cr<.55?RUBY:cr<.70?JADE:cr<.83?LOTUS:SKY;
+      this.rot=Math.random()*Math.PI*2;
+      this.rotV=(Math.random()-.5)*0.004;
+    }
+    update(){
+      this.x+=this.vx; this.y+=this.vy; this.rot+=this.rotV; this.life++;
+      if(this.life<30)this.alpha=Math.min(this.targetAlpha,this.alpha+this.targetAlpha/30);
+      else if(this.life>this.maxLife-40)this.alpha=Math.max(0,this.alpha-this.targetAlpha/40);
+      if(this.life>this.maxLife||this.y<-60)this.reset(false);
+    }
+    draw(){
+      cx.save();
+      cx.globalAlpha=this.alpha;
+      cx.translate(this.x,this.y);
+      cx.rotate(this.rot);
+      cx.strokeStyle=this.color+'1)';
+      cx.fillStyle=this.color+'.18)';
+      cx.lineWidth=0.7;
+      const s=this.size;
+      if(this.type==='pagoda') drawPagoda(cx,s);
+      else if(this.type==='lotus') drawLotus(cx,s);
+      else if(this.type==='diamond') drawDiamond(cx,s);
+      else if(this.type==='star8') drawStar8(cx,s);
+      else if(this.type==='hti') drawHti(cx,s);
+      else{
+        cx.font=`${s}px 'Noto Sans Myanmar',sans-serif`;
+        cx.fillStyle=this.color+'.22)';
+        cx.textAlign='center';cx.textBaseline='middle';
+        cx.fillText(this.ch,0,0);
+      }
+      cx.restore();
+    }
+  }
+
+  // ── Shape drawers ────────────────────────────────────────
+
+  // Pagoda / Stupa silhouette (ဘုရား ပုံစံ)
+  function drawPagoda(cx,s){
+    cx.beginPath();
+    // Base
+    cx.rect(-s*.7,s*.3,s*1.4,s*.2);
+    // Middle tier
+    cx.rect(-s*.5,s*.1,s*1,s*.22);
+    // Upper tier
+    cx.rect(-s*.3,-s*.08,s*.6,s*.2);
+    // Spire
+    cx.moveTo(0,-s*.08);cx.lineTo(-s*.12,-s*.5);cx.lineTo(s*.12,-s*.5);cx.closePath();
+    cx.moveTo(0,-s*.5);cx.lineTo(0,-s*.95);
+    cx.stroke();cx.fill();
+    // Hti tip dot
+    cx.beginPath();cx.arc(0,-s*.95,s*.04,0,Math.PI*2);cx.fill();
+  }
+
+  // Lotus flower (ကြာပွင့်)
+  function drawLotus(cx,s){
+    const petals=8;
+    for(let i=0;i<petals;i++){
+      cx.save();cx.rotate(i*Math.PI*2/petals);
+      cx.beginPath();
+      cx.ellipse(0,-s*.55,s*.18,s*.45,0,0,Math.PI*2);
+      cx.stroke();cx.fill();
+      cx.restore();
+    }
+    cx.beginPath();cx.arc(0,0,s*.18,0,Math.PI*2);cx.stroke();cx.fill();
+  }
+
+  // Diamond / Kalaga gem (ကာလာဂ)
+  function drawDiamond(cx,s){
+    cx.beginPath();
+    cx.moveTo(0,-s);cx.lineTo(s*.6,0);cx.lineTo(0,s*.7);cx.lineTo(-s*.6,0);cx.closePath();
+    // Inner facets
+    cx.moveTo(0,-s);cx.lineTo(0,s*.7);
+    cx.moveTo(-s*.6,0);cx.lineTo(s*.6,0);
+    cx.moveTo(-s*.6,0);cx.lineTo(0,-s*.3);cx.moveTo(s*.6,0);cx.lineTo(0,-s*.3);
+    cx.stroke();cx.fill();
+  }
+
+  // 8-pointed star (မြန်မာ ကြယ်)
+  function drawStar8(cx,s){
+    cx.beginPath();
+    for(let i=0;i<8;i++){
+      const a=i*Math.PI/4,ai=(i+.5)*Math.PI/4;
+      const ox=Math.cos(a)*s,oy=Math.sin(a)*s;
+      const ix=Math.cos(ai)*s*.4,iy=Math.sin(ai)*s*.4;
+      i===0?cx.moveTo(ox,oy):cx.lineTo(ox,oy);
+      cx.lineTo(ix,iy);
+    }
+    cx.closePath();cx.stroke();cx.fill();
+  }
+
+  // Hti (ထီး) — tiered parasol
+  function drawHti(cx,s){
+    for(let t=0;t<4;t++){
+      const y=-s*.1-t*s*.22, r=s*(.55-t*.11);
+      cx.beginPath();
+      cx.moveTo(-r,y);
+      cx.quadraticCurveTo(0,y-s*.18,r,y);
+      cx.stroke();
+    }
+    cx.beginPath();cx.moveTo(0,s*.6);cx.lineTo(0,-s*.1);cx.stroke();
+  }
+
+  // ── Firefly glow orbs ────────────────────────────────────
+  class Orb{
+    constructor(){
+      this.x=Math.random()*W; this.y=Math.random()*H;
+      this.vx=(Math.random()-.5)*.35; this.vy=(Math.random()-.5)*.25;
+      this.r=40+Math.random()*80;
+      this.alpha=0.04+Math.random()*0.07;
+      this.phase=Math.random()*Math.PI*2;
+      this.speed=0.003+Math.random()*0.005;
+      const c=Math.random();
+      this.color=c<.5?'212,168,67':c<.7?'160,60,100':'80,60,160';
+    }
+    update(){
+      this.x+=this.vx;this.y+=this.vy;this.phase+=this.speed;
+      if(this.x<-200)this.x=W+200;if(this.x>W+200)this.x=-200;
+      if(this.y<-200)this.y=H+200;if(this.y>H+200)this.y=-200;
+    }
+    draw(){
+      const a=this.alpha*(0.6+0.4*Math.sin(this.phase));
+      const g=cx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.r);
+      g.addColorStop(0,`rgba(${this.color},${a})`);
+      g.addColorStop(1,`rgba(${this.color},0)`);
+      cx.fillStyle=g;cx.beginPath();cx.arc(this.x,this.y,this.r,0,Math.PI*2);cx.fill();
+    }
+  }
+
+  // ── Border mandala corners ───────────────────────────────
+  function drawCornerMandala(cx,x,y,r,t){
+    cx.save();cx.translate(x,y);
+    const layers=4;
+    for(let l=0;l<layers;l++){
+      const lr=r*(1-l*.2), petals=8+l*4;
+      cx.globalAlpha=0.09-l*.015;
+      cx.strokeStyle=`rgba(212,168,67,1)`;
+      cx.lineWidth=0.6;
+      for(let i=0;i<petals;i++){
+        cx.save();cx.rotate(i*Math.PI*2/petals+t*(.2+l*.1));
+        cx.beginPath();cx.ellipse(0,-lr*.55,lr*.14,lr*.42,0,0,Math.PI*2);
+        cx.stroke();cx.restore();
+      }
+      cx.beginPath();cx.arc(0,0,lr*.15,0,Math.PI*2);
+      cx.strokeStyle=`rgba(212,168,67,.06)`;cx.stroke();
+    }
+    cx.restore();
+  }
+
+  // ── Top decorative band — flowing Myanmar border pattern ─
+  function drawTopBand(t){
+    const bh=52;
+    // Background strip
+    const g=cx.createLinearGradient(0,0,0,bh);
+    g.addColorStop(0,'rgba(20,8,35,.55)');
+    g.addColorStop(1,'rgba(20,8,35,0)');
+    cx.fillStyle=g;cx.fillRect(0,0,W,bh);
+
+    // Repeating kalaga border chain
+    cx.save();cx.globalAlpha=0.07;cx.strokeStyle='#D4A843';cx.lineWidth=.8;
+    const unit=44, offset=(t*12)%unit;
+    for(let x=-unit+offset;x<W+unit;x+=unit){
+      // Diamond chain link
+      cx.beginPath();
+      cx.moveTo(x,8);cx.lineTo(x+unit*.25,22);cx.lineTo(x+unit*.5,8);
+      cx.lineTo(x+unit*.75,22);cx.lineTo(x+unit,8);
+      cx.moveTo(x+unit*.25,22);cx.lineTo(x+unit*.5,36);cx.lineTo(x+unit*.75,22);
+      cx.stroke();
+      // Small dot
+      cx.beginPath();cx.arc(x+unit*.5,22,2,0,Math.PI*2);cx.stroke();
+    }
+    cx.restore();
+
+    // Gold line separator
+    const lg=cx.createLinearGradient(0,0,W,0);
+    lg.addColorStop(0,'rgba(212,168,67,0)');
+    lg.addColorStop(.2,'rgba(212,168,67,.25)');
+    lg.addColorStop(.5,'rgba(212,168,67,.45)');
+    lg.addColorStop(.8,'rgba(212,168,67,.25)');
+    lg.addColorStop(1,'rgba(212,168,67,0)');
+    cx.fillStyle=lg;cx.fillRect(0,bh-1,W,1);
+  }
+
+  // Bottom band mirror
+  function drawBottomBand(t){
+    const bh=48;
+    const g=cx.createLinearGradient(0,H-bh,0,H);
+    g.addColorStop(0,'rgba(20,8,35,0)');
+    g.addColorStop(1,'rgba(10,4,20,.5)');
+    cx.fillStyle=g;cx.fillRect(0,H-bh,W,bh);
+    const lg=cx.createLinearGradient(0,0,W,0);
+    lg.addColorStop(0,'rgba(212,168,67,0)');
+    lg.addColorStop(.3,'rgba(212,168,67,.2)');
+    lg.addColorStop(.7,'rgba(212,168,67,.2)');
+    lg.addColorStop(1,'rgba(212,168,67,0)');
+    cx.fillStyle=lg;cx.fillRect(0,H-bh,W,1);
+  }
+
+  // ── Init ─────────────────────────────────────────────────
+  const PARTICLE_COUNT=38;
+  const ORB_COUNT=9;
+  const particles=Array.from({length:PARTICLE_COUNT},()=>new Particle());
+  const orbs=Array.from({length:ORB_COUNT},()=>new Orb());
+
+  const cornerR=Math.min(W,H)*.22;
+  let frame=0;
+
+  function loop(){
+    requestAnimationFrame(loop);
+    frame++;
+    cx.clearRect(0,0,W,H);
+
+    // ── Dark Myanmar night base ──
+    cx.fillStyle='#06020A';
+    cx.fillRect(0,0,W,H);
+
+    // Subtle vignette radial overlays
+    const v1=cx.createRadialGradient(W*.5,0,0,W*.5,0,H*1.1);
+    v1.addColorStop(0,'rgba(25,10,45,.7)');v1.addColorStop(1,'rgba(6,2,10,0)');
+    cx.fillStyle=v1;cx.fillRect(0,0,W,H);
+    const v2=cx.createRadialGradient(0,H,0,0,H,W*.8);
+    v2.addColorStop(0,'rgba(30,8,0,.5)');v2.addColorStop(1,'rgba(6,2,10,0)');
+    cx.fillStyle=v2;cx.fillRect(0,0,W,H);
+    const v3=cx.createRadialGradient(W,H*.6,0,W,H*.6,W*.7);
+    v3.addColorStop(0,'rgba(12,5,30,.45)');v3.addColorStop(1,'rgba(6,2,10,0)');
+    cx.fillStyle=v3;cx.fillRect(0,0,W,H);
+
+    // Orbs (soft glow blobs)
+    for(const o of orbs){o.update();o.draw();}
+
+    // Top / bottom decorative bands
+    drawTopBand(frame*.001);
+    drawBottomBand(frame*.001);
+
+    // Corner mandalas
+    const cr=Math.min(W,H)*.18;
+    const t=frame*.0008;
+    drawCornerMandala(cx,0,0,cr,t);
+    drawCornerMandala(cx,W,0,cr,-t);
+    drawCornerMandala(cx,0,H,cr,-t);
+    drawCornerMandala(cx,W,H,cr,t);
+
+    // Floating cultural particles
+    for(const p of particles){p.update();p.draw();}
+  }
+  loop();
+})();
+</script>
+
+
 </body>
-  </html>
+</html>
