@@ -420,11 +420,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .rematch-status{font-size:.75rem;color:rgba(212,168,67,.6);margin-top:10px;min-height:18px}
 
 /* ── HUFF PICK CANDIDATES ── */
-.piece.huff-cand{cursor:pointer;animation:huff-cand-glow .65s ease-in-out infinite;
-  outline:3px solid rgba(255,140,0,.95);outline-offset:3px;z-index:5}
-@keyframes huff-cand-glow{
+.piece.huff-cand{cursor:pointer;outline:3px solid rgba(255,140,0,.95);outline-offset:3px;z-index:5;
+  animation:huff-cand-pulse .65s ease-in-out infinite}
+@keyframes huff-cand-pulse{
   0%,100%{box-shadow:0 0 0 0 rgba(255,140,0,.4),0 3px 8px rgba(0,0,0,.7)}
-  50%{box-shadow:0 0 20px 7px rgba(255,140,0,.5),0 3px 8px rgba(0,0,0,.7)}}
+  50%{box-shadow:0 0 18px 6px rgba(255,140,0,.5),0 3px 8px rgba(0,0,0,.7)}}
 .huff-pick-bar{display:none;align-items:center;justify-content:center;gap:7px;
   padding:8px 14px;border-radius:10px;width:100%;
   background:rgba(255,80,0,.12);border:1.5px solid rgba(255,140,0,.45);
@@ -891,25 +891,26 @@ function normalMoves(r,c,t,bs){
      chainDone    = steps committed so far (index into paths)
 ═══════════════════════════════════ */
 
-let chainOrigin=null;
-let chainPaths=[];
-let chainDone=0;
+let chainOrigin=null;  // board coords of piece being moved
+let chainPaths=[];     // current candidate paths (each is array of steps)
+let chainDone=0;       // how many steps committed
 
 // Huff pick state
-let huffPickingMode=false;
-let huffPickCandidates=[];
+let huffPickMode=false;       // waiting for player to click a huff candidate
+let huffPickCands=[];          // [{or,oc,path,piece,victimR,victimC}]
 let huffPickResolve=null;
 
-// Pending animation data to include in next Firebase push
-let _pendingMoveAnim=null;
-let _pendingHuffAnim=null;
-let _replayingAnim=false;
+// Animation data pending to push to Firebase
+let _animPending=null;         // {type:'cap'|'move', ...}
+let _huffAnimPending=null;     // huff ghost data
+let _animBusy=false;           // prevent double-replay on receiver
 
 function onCell(r,c){
   if(over)return;
-  if(huffPickingMode){
-    const cand=huffPickCandidates.find(h=>h.currentPos.r===r&&h.currentPos.c===c);
-    if(cand&&huffPickResolve)huffPickResolve(cand);
+  // In huff pick mode: player A selects which of opponent's pieces to huff
+  if(huffPickMode){
+    const hit=huffPickCands.find(h=>h.victimR===r&&h.victimC===c);
+    if(hit&&huffPickResolve)huffPickResolve(hit);
     return;
   }
   if(turn!==myColor){toast('⏳ သင့်အလှည့် မဟုတ်သေးပါ');return;}
@@ -1006,13 +1007,14 @@ function commitCapStep(hit){
     legals=buildLegalsAtStep(chainPaths,chainDone);
     draw();
   } else {
-    const fullPath=chainPaths[0];
+    // All paths end here — execute the full animation
+    const fullPath=chainPaths[0]; // pick first (all end at same place)
     const origin=chainOrigin;
     clearSel();
     lastF={r:origin.r,c:origin.c};
     draw();
-    _pendingMoveAnim={fr:origin.r,fc:origin.c,capPath:fullPath};
-    _pendingHuffAnim=null;
+    _animPending={type:'cap',fr:origin.r,fc:origin.c,capPath:fullPath};
+    _huffAnimPending=null;
     applyPath(origin.r,origin.c,fullPath).then(()=>finish(false,null));
   }
 }
@@ -1022,124 +1024,148 @@ async function doNormalMove(fr,fc,mv){
   const ac=allCaps(turn,board);
   const had=ac.length>0;
 
-  let huffCandList=[];
+  // Collect ALL pieces that should have captured (max-length paths)
+  let huffCands=[];
   if(had){
     const ml=maxCapLen(ac);
     for(const entry of ac){
-      const bestPath=entry.paths.find(p=>p.length===ml);
-      if(bestPath) huffCandList.push({or:entry.r,oc:entry.c,path:bestPath,piece:board[entry.r][entry.c]});
+      const bp=entry.paths.find(p=>p.length===ml);
+      if(bp){
+        const wasMoved=(entry.r===fr&&entry.c===fc);
+        huffCands.push({
+          or:entry.r, oc:entry.c,
+          path:bp,
+          piece:board[entry.r][entry.c],
+          victimR:wasMoved?mv.r:entry.r,
+          victimC:wasMoved?mv.c:entry.c
+        });
+      }
     }
   }
 
+  // Apply the normal move
   lastF={r:fr,c:fc};
   board[mv.r][mv.c]=board[fr][fc];
   board[fr][fc]=E;
   lastT={r:mv.r,c:mv.c};
   promote(mv.r,mv.c);
   addLog(`${turn===B?'⬛':'⬜'} ${cl(fc)}${fr+1}→${cl(mv.c)}${mv.r+1}${had?' ⚠️ ဖမ်းမစားခဲ့!':''}`);
-  _pendingMoveAnim={fr,fc,tr:mv.r,tc:mv.c,capPath:null};
+  _animPending={type:'move',fr,fc,tr:mv.r,tc:mv.c};
   clearSel();draw();
 
-  if(had&&huffCandList.length>0){
-    const mapped=huffCandList.map(h=>{
-      const wasMoved=(h.or===fr&&h.oc===fc);
-      return{...h,currentPos:wasMoved?{r:mv.r,c:mv.c}:{r:h.or,c:h.oc}};
-    });
+  if(had&&huffCands.length>0){
     let chosen;
-    if(mapped.length===1){chosen=mapped[0];}
-    else{chosen=await showHuffPicker(mapped);}
-    _pendingHuffAnim=chosen;
-    await showHuffAnimation(chosen);
-    const vl=`${cl(chosen.currentPos.c)}${chosen.currentPos.r+1}`;
+    if(huffCands.length===1){
+      chosen=huffCands[0];
+    } else {
+      chosen=await showHuffPicker(huffCands);
+    }
+    _huffAnimPending=chosen;
+    await doHuffAnimation(chosen,true);
+    const vl=`${cl(chosen.victimC)}${chosen.victimR+1}`;
     finish(false,null,{by:myName,at:vl,ts:Date.now()});
   } else {
-    _pendingHuffAnim=null;
+    _huffAnimPending=null;
     finish(false,null,null);
   }
 }
 
-async function showHuffPicker(candidates){
-  huffPickingMode=true;huffPickCandidates=candidates;
-  const labels=candidates.map(h=>`${cl(h.currentPos.c)}${h.currentPos.r+1}`).join('  /  ');
-  $s('huff-pick-msg',`ဖမ်းမစားမိ ${candidates.length} ကောင် (${labels}) — ဖမ်းကောက်မည့်ကောင် Board ပေါ်မှ ရွေးပါ`);
+/* ═══ HUFF PICK (when 2+ candidates) ══════════════════ */
+async function showHuffPicker(cands){
+  huffPickMode=true; huffPickCands=cands;
+  const labels=cands.map(h=>`${cl(h.victimC)}${h.victimR+1}`).join(' / ');
+  $s('huff-pick-msg',`ဖမ်းမစားမိ ${cands.length} ကောင် (${labels}) — ဖမ်းကောက်မည့်ကောင် Board ပေါ်မှ ရွေးပါ`);
   $('huff-pick-bar').classList.add('on');
-  vibrate([80,40,80]);draw();
+  vibrate([80,40,80]); draw();
   const chosen=await new Promise(res=>{huffPickResolve=res;});
-  huffPickingMode=false;huffPickCandidates=[];huffPickResolve=null;
-  $('huff-pick-bar').classList.remove('on');draw();
+  huffPickMode=false; huffPickCands=[]; huffPickResolve=null;
+  $('huff-pick-bar').classList.remove('on'); draw();
   return chosen;
 }
 
-/* showHuffAnimation — runs on the MOVER's side; modifies board */
-async function showHuffAnimation(huff){
-  const{or,oc,path,piece,currentPos}=huff;
-  await _huffGhostAnim(or,oc,path,piece,currentPos,true);
-}
-
-/* replayHuffGhost — runs on OPPONENT's side; does NOT modify board (state comes from Firebase) */
-async function replayHuffGhost(huff){
-  const{or,oc,path,piece,currentPos}=huff;
-  await _huffGhostAnim(or,oc,path,piece,currentPos,false);
-}
-
-async function _huffGhostAnim(or,oc,path,piece,currentPos,doRemove){
-  const cell=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell'))||50;
-  function cellPageCenter(r,c){
-    const el=getCellEl(r,c);if(!el)return{x:0,y:0};
-    const rect=el.getBoundingClientRect();
-    return{x:rect.left+rect.width/2,y:rect.top+rect.height/2};
+/* ═══ SHARED GHOST ANIMATION CORE ═════════════════════
+   doRemove=true  → mover's side: removes piece from board
+   doRemove=false → receiver's side: visual only           */
+async function _ghostWalk(or,oc,path,piece,victimR,victimC,doRemove){
+  const cellPx=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cell'))||50;
+  function ctr(r,c){
+    const el=getCellEl(r,c); if(!el)return{x:0,y:0};
+    const rc=el.getBoundingClientRect();
+    return{x:rc.left+rc.width/2, y:rc.top+rc.height/2};
   }
 
-  // Phase 1: highlight victim + what it could have eaten
-  const victimEl=getCellEl(currentPos.r,currentPos.c);
-  if(victimEl){victimEl.style.outline='3px solid rgba(229,115,115,.95)';victimEl.style.outlineOffset='-2px';}
+  // Phase 1: red outline on victim, yellow on what it could have eaten
+  const vEl=getCellEl(victimR,victimC);
+  if(vEl){vEl.style.outline='3px solid rgba(229,115,115,.95)';vEl.style.outlineOffset='-2px';}
   for(const s of path){
-    const capEl=getCellEl(s.cap[0],s.cap[1]);
-    if(capEl){capEl.style.outline='3px solid rgba(255,220,50,.7)';capEl.style.outlineOffset='-2px';}
+    const cEl=getCellEl(s.cap[0],s.cap[1]);
+    if(cEl){cEl.style.outline='3px solid rgba(255,220,50,.7)';cEl.style.outlineOffset='-2px';}
   }
   await sleep(900);
-  if(victimEl)victimEl.style.outline='';
-  for(const s of path){const capEl=getCellEl(s.cap[0],s.cap[1]);if(capEl)capEl.style.outline='';}
+  if(vEl)vEl.style.outline='';
+  for(const s of path){const cEl=getCellEl(s.cap[0],s.cap[1]);if(cEl)cEl.style.outline='';}
 
   // Phase 2: ghost walks the capture path
-  const pieceSize=cell-7;
+  const sz=cellPx-7;
   const ghost=document.createElement('div');
   ghost.className=`ghost-piece ${isB(piece)?'bp':'wp'}${isK(piece)?' kp':''}`;
-  ghost.style.cssText=`width:${pieceSize}px;height:${pieceSize}px;position:fixed;z-index:900;
-    border-radius:50%;pointer-events:none;
-    transition:left .32s cubic-bezier(.4,0,.2,1),top .32s cubic-bezier(.4,0,.2,1);
+  ghost.style.cssText=`width:${sz}px;height:${sz}px;position:fixed;z-index:900;border-radius:50%;
+    pointer-events:none;transition:left .32s cubic-bezier(.4,0,.2,1),top .32s cubic-bezier(.4,0,.2,1);
     animation:ghost-fade-in .25s ease forwards`;
   document.body.appendChild(ghost);
-  const startPos=cellPageCenter(or,oc);
-  ghost.style.left=`${startPos.x-pieceSize/2}px`;
-  ghost.style.top=`${startPos.y-pieceSize/2}px`;
+  const sp=ctr(or,oc);
+  ghost.style.left=`${sp.x-sz/2}px`; ghost.style.top=`${sp.y-sz/2}px`;
   await sleep(280);
-
   for(const s of path){
-    const dest=cellPageCenter(s.r,s.c);
-    ghost.style.left=`${dest.x-pieceSize/2}px`;
-    ghost.style.top=`${dest.y-pieceSize/2}px`;
+    const dp=ctr(s.r,s.c);
+    ghost.style.left=`${dp.x-sz/2}px`; ghost.style.top=`${dp.y-sz/2}px`;
     await sleep(150);
-    const capEl=getCellEl(s.cap[0],s.cap[1]);
-    if(capEl){const flash=document.createElement('div');flash.className='cap-flash';capEl.appendChild(flash);setTimeout(()=>flash.remove(),380);}
+    const fEl=getCellEl(s.cap[0],s.cap[1]);
+    if(fEl){const fl=document.createElement('div');fl.className='cap-flash';fEl.appendChild(fl);setTimeout(()=>fl.remove(),380);}
     await sleep(220);
   }
   await sleep(200);
-  ghost.style.transition='none';ghost.style.animation='ghost-pop .35s ease forwards';
-  await sleep(350);ghost.remove();
+  ghost.style.transition='none'; ghost.style.animation='ghost-pop .35s ease forwards';
+  await sleep(350); ghost.remove();
 
-  // Phase 3: only on mover's side — remove the huffed piece from board
+  // Phase 3: flash victim cell; only mover side removes from board
+  const vFlEl=getCellEl(victimR,victimC);
+  if(vFlEl){const fl=document.createElement('div');fl.className='cap-flash';vFlEl.appendChild(fl);setTimeout(()=>fl.remove(),450);}
   if(doRemove){
     const oppColor=turn===B?W:B;
-    const victimPiece=board[currentPos.r][currentPos.c];
-    if(victimPiece!==E){capBy[oppColor].push(victimPiece);board[currentPos.r][currentPos.c]=E;}
-    const victimLabel=`${cl(currentPos.c)}${currentPos.r+1}`;
-    const vEl=getCellEl(currentPos.r,currentPos.c);
-    if(vEl){const flash=document.createElement('div');flash.className='cap-flash';vEl.appendChild(flash);setTimeout(()=>flash.remove(),450);}
-    addLog(`💨 Huff! ${victimLabel} ဖမ်းကောက်ခံရ`);
+    const vp=board[victimR][victimC];
+    if(vp!==E){capBy[oppColor].push(vp); board[victimR][victimC]=E;}
+    addLog(`💨 Huff! ${cl(victimC)}${victimR+1} ဖမ်းကောက်ခံရ`);
     draw();
   }
   await sleep(400);
+}
+
+/* Mover's side — animates AND removes piece from board */
+async function doHuffAnimation(h,doRemove){
+  await _ghostWalk(h.or,h.oc,h.path,h.piece,h.victimR,h.victimC,doRemove);
+}
+
+/* Receiver's side — visual replay only, no board modification */
+async function replayHuffGhost(h){
+  await _ghostWalk(h.or,h.oc,h.path,h.piece,h.victimR,h.victimC,false);
+}
+
+/* Receiver's side — replay capture animation step-by-step using pre-move board */
+async function replayCaptureAnim(fr,fc,capPath){
+  let r=fr,c=fc;
+  const p=board[r][c];
+  for(const s of capPath){
+    const[cr,cc]=s.cap;
+    const fromEl=getCellEl(r,c);
+    if(fromEl){const pEl=fromEl.querySelector('.piece');if(pEl){pEl.classList.add('jumping');await sleep(120);pEl.classList.remove('jumping');}}
+    const cEl=getCellEl(cr,cc);
+    if(cEl){const fl=document.createElement('div');fl.className='cap-flash';cEl.appendChild(fl);setTimeout(()=>fl.remove(),400);}
+    board[cr][cc]=E; board[r][c]=E; board[s.r][s.c]=p;
+    r=s.r; c=s.c;
+    lastT={r,c}; draw(); await sleep(260);
+  }
+  lastT={r,c}; draw();
 }
 
 // Helper: get the DOM cell element for a given board (r,c)
@@ -1221,9 +1247,9 @@ function finish(tHuff,hPos,huffNotif){
     lastF,lastT,lastLog:glog[0]||'',
     huffAvail:false,huffPos:null,huffFor:null};
   if(huffNotif)payload.huffNotif=huffNotif;
-  if(_pendingMoveAnim)payload.moveAnim=_pendingMoveAnim;
-  if(_pendingHuffAnim)payload.huffAnim=_pendingHuffAnim;
-  _pendingMoveAnim=null;_pendingHuffAnim=null;
+  if(_animPending)payload.anim=_animPending;
+  if(_huffAnimPending)payload.huffAnim=_huffAnimPending;
+  _animPending=null; _huffAnimPending=null;
   push(payload);
   turn=nxt;draw();uiUpdate();
 }
@@ -1401,66 +1427,82 @@ function listenChat(){
 async function applyRemote(st){
   const prevVer=ver;
 
-  // Detect rematch
+  // Detect rematch: new game started (ver resets to 0, over was true)
   if(st.ver===0&&over&&st.hostColor!==undefined){
-    applyRematchColor(st);loadSt(st);
-    over=false;winShown=false;gameCount++;
-    $('wino').classList.remove('on');$s('rematch-status','');
+    applyRematchColor(st);
+    loadSt(st);
+    over=false;winShown=false;
+    gameCount++;
+    $('wino').classList.remove('on');
+    $s('rematch-status','');
     const btn=$('btn-rematch');if(btn){btn.disabled=false;btn.textContent='🔄 ထပ်ကစားမည်';}
     showGame();
     sysChat(`🔄 ပွဲ ${gameCount+1} စတင်သည်! ${myColor===B?'⬛ မဲ':'⬜ ဖြူ'} ကစားမည်`);
     return;
   }
 
-  // ── Replay opponent animation BEFORE applying final state ──
-  const isNewOpponentMove=(st.ver||0)>prevVer && st.turn===myColor && !st.over && !_replayingAnim;
+  // ── Replay opponent animation BEFORE applying final state ──────────────────
+  const isNewOppMove=(st.ver||0)>prevVer && !st.over && !_animBusy;
+  if(isNewOppMove && st.anim){
+    _animBusy=true;
+    // Snapshot final state — will overwrite after animation
+    const fBoard=st.board.map(r=>[...r]);
+    const fCap={[B]:[...(st.capBy?.[B]||[])],[W]:[...(st.capBy?.[W]||[])]};
 
-  if(isNewOpponentMove && st.moveAnim){
-    _replayingAnim=true;
-    const ma=st.moveAnim;
-    lastF={r:ma.fr,c:ma.fc};
-    sel=null;legals=[];
+    sel=null; legals=[];
 
-    if(ma.capPath && ma.capPath.length>0){
-      // Replay capture step-by-step using current (pre-move) board
-      await applyPath(ma.fr,ma.fc,ma.capPath);
-    } else {
-      // Normal move: slide piece
-      lastT={r:ma.tr,c:ma.tc};
-      board[ma.tr][ma.tc]=board[ma.fr][ma.fc];
-      board[ma.fr][ma.fc]=E;
-      draw();await sleep(220);
+    if(st.anim.type==='cap'){
+      // Replay capture step-by-step on pre-move board
+      lastF={r:st.anim.fr,c:st.anim.fc};
+      draw();
+      await replayCaptureAnim(st.anim.fr,st.anim.fc,st.anim.capPath);
+    } else if(st.anim.type==='move'){
+      // Highlight from-cell, then slide piece
+      lastF={r:st.anim.fr,c:st.anim.fc};
+      draw();
+      await sleep(200);
+      if(board[st.anim.fr]&&board[st.anim.fr][st.anim.fc]!==undefined){
+        board[st.anim.tr][st.anim.tc]=board[st.anim.fr][st.anim.fc];
+        board[st.anim.fr][st.anim.fc]=E;
+      }
+      lastT={r:st.anim.tr,c:st.anim.tc};
+      draw();
+      await sleep(300);
     }
 
-    // Replay huff ghost if opponent also huffed
+    // Replay huff ghost if one occurred
     if(st.huffAnim){
       await replayHuffGhost(st.huffAnim);
     }
-    _replayingAnim=false;
+
+    // Apply authoritative final state
+    board=fBoard;
+    capBy=fCap;
+    _animBusy=false;
+  } else {
+    // No animation data or first load — apply state directly
+    board=st.board.map(r=>[...r]);
+    if(st.capBy){capBy[B]=[...(st.capBy[B]||[])];capBy[W]=[...(st.capBy[W]||[])];}
   }
 
-  // Apply authoritative final state from Firebase
-  board=st.board.map(r=>[...r]);
-  turn=st.turn;ver=st.ver||0;
-  lastF=st.lastF||null;lastT=st.lastT||null;
-  if(st.capBy){capBy[B]=[...(st.capBy[B]||[])];capBy[W]=[...(st.capBy[W]||[])];}
+  turn=st.turn; ver=st.ver||0;
+  lastF=st.lastF||null; lastT=st.lastT||null;
   if(st.lastLog)addLog(st.lastLog);
   over=st.over||false;
-  sel=null;legals=[];
+  sel=null; legals=[];
   clearHuff();
 
-  // Huff notification for the player whose piece was taken
+  // Huff notification — show to the player whose piece was taken
   if(st.huffNotif&&st.huffNotif.ts&&(!window._lastHuffTs||st.huffNotif.ts>window._lastHuffTs)){
     window._lastHuffTs=st.huffNotif.ts;
-    const oppName=st.huffNotif.by||'ပြိုင်ဘက်';
     $s('huff-piece-lbl',st.huffNotif.at);
     $('hn').classList.add('on');
     vibrate([200,80,200,80,200]);
-    sysChat(`💨 မစားမိသောကြောင့် ${st.huffNotif.at} ကောင် ဖမ်းကောက်ခံလိုက်ရသည်`);
+    sysChat(`💨 မစားမိသောကြောင့် ${st.huffNotif.at} ဖမ်းကောက်ခံလိုက်ရသည်`);
     setTimeout(()=>$('hn').classList.remove('on'),4000);
   }
 
-  draw();uiUpdate();
+  draw(); uiUpdate();
   if(ver>prevVer&&turn===myColor&&!st.over)vibrate([0,60,120,60,200,60,120]);
   if(st.over&&st.winner!=null)showWin(st.winner===myColor,st.winner===B?'မဲ':'ဖြူ');
 }
@@ -1469,9 +1511,9 @@ function loadSt(st){
   board=st.board.map(r=>[...r]);turn=st.turn||B;ver=st.ver||0;
   over=false;capBy={[B]:[],[W]:[]};glog=[];sel=null;legals=[];
   lastF=null;lastT=null;huffOn=false;huffAt=null;
-  huffPickingMode=false;huffPickCandidates=[];huffPickResolve=null;
-  _pendingMoveAnim=null;_pendingHuffAnim=null;_replayingAnim=false;
-  const bar=$('huff-pick-bar');if(bar)bar.classList.remove('on');
+  huffPickMode=false;huffPickCands=[];huffPickResolve=null;
+  _animPending=null;_huffAnimPending=null;_animBusy=false;
+  const hpb=$('huff-pick-bar');if(hpb)hpb.classList.remove('on');
 }
 
 /* ═══════════════════════════════════
@@ -1498,8 +1540,8 @@ window.doLeave=function(){
   board=[];turn=B;sel=null;legals=[];over=false;glog=[];
   capBy={[B]:[],[W]:[]};ver=0;huffOn=false;huffAt=null;
   lastF=null;lastT=null;winShown=false;gameCount=0;$s('lobby-st','');
-  huffPickingMode=false;huffPickCandidates=[];huffPickResolve=null;
-  _pendingMoveAnim=null;_pendingHuffAnim=null;_replayingAnim=false;
+  huffPickMode=false;huffPickCands=[];huffPickResolve=null;
+  _animPending=null;_huffAnimPending=null;_animBusy=false;
   const hpb=$('huff-pick-bar');if(hpb)hpb.classList.remove('on');
   $s('rematch-status','');
   const btn=$('btn-rematch');if(btn){btn.disabled=false;btn.textContent='🔄 ထပ်ကစားမည်';}
@@ -1576,17 +1618,15 @@ function draw(){
         p.className=`piece ${isB(board[r][c])?'bp':'wp'}${isK(board[r][c])?' kp':''}`;
         if(isSel)p.classList.add('sp');
         if(huffOn&&huffAt&&huffAt.r===r&&huffAt.c===c)p.classList.add('hp');
-        if(huffPickingMode){
-          if(huffPickCandidates.some(h=>h.currentPos.r===r&&h.currentPos.c===c))p.classList.add('huff-cand');
-        }
-        // Badge only on selected piece
+        // Huff pick mode: highlight selectable candidates
+        if(huffPickMode&&huffPickCands.some(h=>h.victimR===r&&h.victimC===c))p.classList.add('huff-cand');
+        // Badge only on the selected piece (not all pieces)
         if(isSel&&turn===myColor){
           const ac2=allCaps(turn,board);const ml2=maxCapLen(ac2);
-          if(ml2>=2){
-            const en2=ac2.find(e=>e.r===r&&e.c===c);
+          if(ml2>=2){const en2=ac2.find(e=>e.r===r&&e.c===c);
             if(en2&&en2.paths.filter(px=>px.length===ml2).length>0){
-              const badge=document.createElement('div');badge.className='cap-badge';
-              badge.textContent=ml2;badge.style.pointerEvents='none';p.appendChild(badge);
+              const bdg=document.createElement('div');bdg.className='cap-badge';
+              bdg.textContent=ml2;bdg.style.pointerEvents='none';p.appendChild(bdg);
             }
           }
         }
@@ -1630,7 +1670,7 @@ function uiUpdate(){
 
   if(turn===myColor&&!over){
     const ac=allCaps(myColor,board);
-    if(ac.length)toast('⚔️ ဖမ်းယူနိုင်သည်! ကျားကို ထောက်ကြည့်ပါ');
+    if(ac.length){}// captures handled via highlight
   }
 }
 
