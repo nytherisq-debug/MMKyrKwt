@@ -1700,22 +1700,22 @@ function showGame(){
 
   // My card (left panel)
   $s('my-nm',myName);
-  $s('my-rl',isBlk?'⬛ မဲ — ကစားဦးမည်':'⬜ ဖြူ');
+  $s('my-rl',isBlk?'⬛ မဲ':'⬜ ဖြူ');
   $('my-av').className=`pav ${isBlk?'av-b':'av-w'}`;
   $s('my-av',isBlk?'⬛':'⬜');
 
   // Opp card (right panel)
   $('opp-av').className=`pav ${isBlk?'av-w':'av-b'}`;
   $s('opp-av',isBlk?'⬜':'⬛');
-  $s('opp-rl',isBlk?'⬜ ဖြူ':'⬛ မဲ — ကစားဦးမည်');
+  $s('opp-rl',isBlk?'⬜ ဖြူ':'⬛ မဲ');
 
   // My bar (bottom bar)
   $s('my-pnm',myName);
-  $s('my-prl',isBlk?'မဲ — ကစားဦးမည်':'ဖြူ');
+  $s('my-prl',isBlk?'မဲ':'ဖြူ');
   $('my-pc').className=`pbpc ${isBlk?'b':'w'}`;
 
   // Opp bar (top bar)
-  $s('opp-prl',isBlk?'ဖြူ':'မဲ — ကစားဦးမည်');
+  $s('opp-prl',isBlk?'ဖြူ':'မဲ');
   $('opp-pc').className=`pbpc ${isBlk?'w':'b'}`;
 
   buildCoords();draw();uiUpdate();
@@ -2163,4 +2163,4 @@ $('inp-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpper
 
 
 </body>
-</html>
+        </html>
