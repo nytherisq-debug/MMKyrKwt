@@ -336,17 +336,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 @keyframes badge-pop{from{transform:scale(0)}to{transform:scale(1)}}
 
 /* Multi-path selector toast */
-.mpaths{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);
-  background:rgba(18,9,0,.97);border:1px solid rgba(212,168,67,.4);border-radius:12px;
-  padding:10px 16px;z-index:700;display:none;text-align:center;
-  box-shadow:0 4px 20px rgba(0,0,0,.8)}
-.mpaths.on{display:block;animation:fadeUp .2s ease}
-.mpaths-lbl{font-size:.72rem;color:var(--gold-l);margin-bottom:8px}
-.mpath-btn{display:inline-block;margin:3px;padding:6px 14px;border-radius:8px;
-  border:1px solid rgba(212,168,67,.35);background:rgba(212,168,67,.08);
-  color:var(--cream);font-size:.72rem;cursor:pointer;transition:all .15s}
-.mpath-btn:hover{background:rgba(212,168,67,.2);border-color:rgba(212,168,67,.7)}
-.mpath-btn.active{background:rgba(212,168,67,.3);border-color:var(--gold)}
 
 /* Multi-capture animation */
 .piece.jumping{
@@ -616,10 +605,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
             </div>
           </div>
         </div>
-      </div>
-      <div class="mpaths" id="mpaths">
-        <div class="mpaths-lbl">📍 ဖမ်းနိုင်သောလမ်း ၂ ခု ရှိသည် — ရွေးပါ</div>
-        <div id="mpath-btns"></div>
       </div>
       <div class="huff-pick-bar" id="huff-pick-bar">
         👆 <span id="huff-pick-msg">ဖမ်းကောက်မည့်ကျားကို Board ပေါ်တွင် ရွေးပါ</span>
@@ -1860,7 +1845,6 @@ function clearCapOverlay(){
   highlightedPaths=[];selectedPathIdx=-1;
   const svg=$('cap-overlay');
   if(svg){while(svg.children.length>1)svg.removeChild(svg.lastChild);}
-  const mp=$('mpaths');if(mp)mp.classList.remove('on');
 }
 
 /* Build capture-path highlights for a selected piece */
@@ -1872,38 +1856,6 @@ function showCapPaths(r,c,paths){
     color:i===0?'gold':'alt'
   }));
 
-  // If >1 unique path show the multi-path UI
-  if(paths.length>1){
-    const mp=$('mpaths');
-    const btns=$('mpath-btns');
-    if(mp&&btns){
-      btns.innerHTML='';
-      paths.forEach((p,i)=>{
-        const b=document.createElement('button');
-        b.className=`mpath-btn${i===0?' active':''}`;
-        b.textContent=`လမ်း ${i===1?'②':'①'} (${p.length} ကောင်)`;
-        b.onclick=()=>{
-          selectedPathIdx=i;
-          document.querySelectorAll('.mpath-btn').forEach((x,j)=>x.classList.toggle('active',j===i));
-          drawCapOverlay();
-        };
-        btns.appendChild(b);
-      });
-      // "show all" btn
-      const all=document.createElement('button');
-      all.className='mpath-btn active';
-      all.textContent='အားလုံးကြည့်';
-      all.onclick=()=>{
-        selectedPathIdx=-1;
-        document.querySelectorAll('.mpath-btn').forEach(x=>x.classList.remove('active'));
-        all.classList.add('active');
-        drawCapOverlay();
-      };
-      btns.insertBefore(all,btns.firstChild);
-      selectedPathIdx=-1;
-      mp.classList.add('on');
-    }
-  }
   drawCapOverlay();
 }
 
@@ -2225,4 +2177,4 @@ $('inp-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpper
 
 
 </body>
-  </html>
+</html>
